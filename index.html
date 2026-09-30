@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#007AFF">
+  <meta name="description" content="我的課表，集中查看每日課堂、倒數、假期與待辦事項。">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="我的課表">
+  <meta name="format-detection" content="telephone=no">
+  <title>我的課表</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="app-backdrop" aria-hidden="true"></div>
+
+  <div class="splash" id="splash" aria-label="正在載入我的課表">
+    <div class="splash__glow splash__glow--one" aria-hidden="true"></div>
+    <div class="splash__glow splash__glow--two" aria-hidden="true"></div>
+    <div class="splash__lockup" id="splashLockup">
+      <div class="app-logo app-logo--splash" aria-hidden="true">
+        <svg viewBox="0 0 64 64" role="img">
+          <rect x="8" y="10" width="48" height="46" rx="14" fill="currentColor" opacity=".18"/>
+          <path d="M20 17v7M44 17v7M15 25h34M19 32h9M36 32h9M19 41h9M36 41h9" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/>
+          <rect x="8" y="10" width="48" height="46" rx="14" fill="none" stroke="currentColor" stroke-width="3"/>
+        </svg>
+      </div>
+      <div class="splash__brand" id="splashBrand">我的課表</div>
+    </div>
+  </div>
+
+  <div class="app-shell" id="appShell" aria-hidden="true">
+    <header class="topbar glass-surface" id="topbar">
+      <div class="topbar__inner">
+        <button class="brand brand--button" id="brandHome" type="button" aria-label="返回本週">
+          <span class="app-logo app-logo--small" aria-hidden="true">
+            <svg viewBox="0 0 64 64">
+              <rect x="8" y="10" width="48" height="46" rx="14" fill="currentColor" opacity=".16"/>
+              <path d="M20 17v7M44 17v7M15 25h34M19 32h9M36 32h9M19 41h9M36 41h9" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/>
+              <rect x="8" y="10" width="48" height="46" rx="14" fill="none" stroke="currentColor" stroke-width="3"/>
+            </svg>
+          </span>
+          <span class="brand__text">我的課表</span>
+          <span class="brand__class" id="brandClass"></span>
+        </button>
+
+        <div class="topbar__actions">
+          <button class="icon-button" id="settingsButton" type="button" aria-label="開啟設定">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"></path>
+              <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.1a1.7 1.7 0 0 0-1.1-1.55 1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.1A1.7 1.7 0 0 0 4.65 8.5 1.7 1.7 0 0 0 4.3 6.62l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.1a1.7 1.7 0 0 0 1.1 1.55 1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.14.37.35.7.6 1 .3.31.7.48 1.1.4h.1v4h-.1A1.7 1.7 0 0 0 19.4 15Z"></path>
+            </svg>
+          </button>
+          <button class="icon-button" id="themeToggle" type="button" aria-label="切換深色模式">
+            <svg class="icon icon--sun" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="3.6"></circle>
+              <path d="M12 2.5v2M12 19.5v2M21.5 12h-2M4.5 12h-2M18.7 5.3l-1.4 1.4M6.7 17.3l-1.4 1.4M18.7 18.7l-1.4-1.4M6.7 6.7 5.3 5.3"></path>
+            </svg>
+            <svg class="icon icon--moon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20.2 15.2A8.3 8.3 0 0 1 8.8 3.8 8.6 8.6 0 1 0 20.2 15.2Z"></path>
+            </svg>
+          </button>
+          <button class="text-button" id="loginButton" type="button">登入</button>
+          <button class="pill-button pill-button--compact" id="registerButton" type="button">註冊</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-content" id="mainContent" tabindex="-1"></main>
+
+    <nav class="bottom-nav glass-surface" id="bottomNav" aria-label="主要分頁">
+      <div class="bottom-nav__inner">
+        <button class="nav-item is-active" type="button" data-tab="week" aria-label="本週">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="16" rx="3"></rect>
+            <path d="M8 3v4M16 3v4M3 10h18"></path>
+            <path d="M8 14h.01M12 14h.01M16 14h.01M8 17.5h.01M12 17.5h.01"></path>
+          </svg>
+          <span>本週</span>
+        </button>
+        <button class="nav-item" type="button" data-tab="schedule" aria-label="課表">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2Z"></path>
+            <path d="M8 9h8M8 13h8M8 17h5M7 2v4M17 2v4"></path>
+          </svg>
+          <span>課表</span>
+        </button>
+        <button class="nav-item" type="button" data-tab="countdown" aria-label="倒數">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="13" r="8"></circle>
+            <path d="M12 9v4l2.6 1.6M9 2h6M12 2v3"></path>
+          </svg>
+          <span>倒數</span>
+        </button>
+        <button class="nav-item" type="button" data-tab="holiday" aria-label="假期">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3v18M4.2 7.5l15.6 9M19.8 7.5l-15.6 9"></path>
+            <circle cx="12" cy="12" r="2.2"></circle>
+          </svg>
+          <span>假期</span>
+        </button>
+        <button class="nav-item" type="button" data-tab="experience" aria-label="閱歷">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 3h12a2 2 0 0 1 2 2v16l-4-2-4 2-4-2-4 2V5a2 2 0 0 1 2-2Z"></path>
+            <path d="M8 8h8M8 12h6"></path>
+          </svg>
+          <span>閱歷</span>
+        </button>
+      </div>
+    </nav>
+  </div>
+
+  <div class="modal-layer" id="modalLayer" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal></div>
+    <section class="modal glass-surface" id="authModal" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+      <button class="modal__close icon-button" type="button" aria-label="關閉" data-close-modal>
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m6 6 12 12M18 6 6 18"></path>
+        </svg>
+      </button>
+      <div class="modal__header">
+        <span class="app-logo app-logo--modal" aria-hidden="true">
+          <svg viewBox="0 0 64 64">
+            <rect x="8" y="10" width="48" height="46" rx="14" fill="currentColor" opacity=".16"/>
+            <path d="M20 17v7M44 17v7M15 25h34M19 32h9M36 32h9M19 41h9M36 41h9" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/>
+            <rect x="8" y="10" width="48" height="46" rx="14" fill="none" stroke="currentColor" stroke-width="3"/>
+          </svg>
+        </span>
+        <h2 id="authTitle">登入我的課表</h2>
+        <p>此為示範模式，資料不會被儲存或驗證。</p>
+      </div>
+      <form class="auth-form" id="authForm">
+        <label class="field">
+          <span>帳號</span>
+          <input id="accountInput" type="text" autocomplete="username" placeholder="請輸入帳號">
+        </label>
+        <label class="field">
+          <span>密碼</span>
+          <input id="passwordInput" type="password" autocomplete="current-password" placeholder="請輸入密碼">
+        </label>
+        <label class="check-row">
+          <input id="rememberMe" type="checkbox" checked>
+          <span>記住我</span>
+        </label>
+        <p class="form-message" id="authMessage" role="status"></p>
+        <button class="pill-button pill-button--wide" type="submit">繼續</button>
+      </form>
+    </section>
+
+    <section class="modal settings-modal glass-surface" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" hidden>
+      <button class="modal__close icon-button" type="button" aria-label="關閉" data-close-settings>
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m6 6 12 12M18 6 6 18"></path>
+        </svg>
+      </button>
+      <div class="modal__header">
+        <span class="settings-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"></path>
+            <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.1a1.7 1.7 0 0 0-1.1-1.55 1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.1A1.7 1.7 0 0 0 4.65 8.5 1.7 1.7 0 0 0 4.3 6.62l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.1a1.7 1.7 0 0 0 1.1 1.55 1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.14.37.35.7.6 1 .3.31.7.48 1.1.4h.1v4h-.1A1.7 1.7 0 0 0 19.4 15Z"></path>
+          </svg>
+        </span>
+        <h2 id="settingsTitle">設定</h2>
+        <p>管理目前的班別與顯示偏好。</p>
+      </div>
+      <div class="settings-list">
+        <div class="settings-row">
+          <div>
+            <span>目前班別</span>
+            <strong id="settingsClassLabel">3A</strong>
+          </div>
+          <button class="pill-button pill-button--compact" id="changeClassButton" type="button">重新選擇</button>
+        </div>
+        <div class="settings-row">
+          <div>
+            <span>顯示模式</span>
+            <strong id="settingsThemeLabel">淺色模式</strong>
+          </div>
+          <button class="text-button" id="settingsThemeButton" type="button">切換</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <noscript>
+    <div class="noscript">請開啟 JavaScript 以使用「我的課表」。</div>
+  </noscript>
+
+  <script src="./app.js" defer></script>
+</body>
+</html>

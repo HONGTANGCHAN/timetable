@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="68" y1="44" x2="446" y2="472" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#007AFF"/>
+      <stop offset=".54" stop-color="#5856D6"/>
+      <stop offset="1" stop-color="#AF52DE"/>
+    </linearGradient>
+    <linearGradient id="paper" x1="152" y1="148" x2="365" y2="382" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#F2F2F7"/>
+    </linearGradient>
+    <filter id="shadow" x="90" y="105" width="340" height="330" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="16" stdDeviation="15" flood-color="#17204A" flood-opacity=".24"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="url(#bg)"/>
+  <circle cx="72" cy="72" r="102" fill="#FFFFFF" opacity=".12"/>
+  <circle cx="451" cy="448" r="130" fill="#FFFFFF" opacity=".1"/>
+  <g filter="url(#shadow)">
+    <rect x="116" y="126" width="280" height="270" rx="60" fill="url(#paper)"/>
+    <path d="M164 132v52M348 132v52" stroke="#007AFF" stroke-width="25" stroke-linecap="round"/>
+    <path d="M159 217h194M182 270h48M282 270h48M182 322h48M282 322h48" stroke="#007AFF" stroke-width="22" stroke-linecap="round"/>
+    <path d="M159 217h194" stroke="#5856D6" stroke-width="22" stroke-linecap="round"/>
+    <rect x="116" y="126" width="280" height="270" rx="60" fill="none" stroke="#FFFFFF" stroke-opacity=".68" stroke-width="7"/>
+  </g>
+</svg>
