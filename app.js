@@ -130,11 +130,14 @@ const state = {
   selectedClass: null,
   activeDay: getTodaySchoolDay(),
   activeTab: "week",
+  weekQuery: "",
   searchQuery: "",
+  scheduleDay: "today",
   todos: loadTodos(),
   authMode: "login",
   countdownTimer: null,
-  toastTimer: null
+  toastTimer: null,
+  splashFinished: false
 };
 
 const elements = {
@@ -144,6 +147,8 @@ const elements = {
   appShell: document.querySelector("#appShell"),
   mainContent: document.querySelector("#mainContent"),
   bottomNav: document.querySelector("#bottomNav"),
+  glassDock: document.querySelector("#glassDock"),
+  navIndicator: document.querySelector("#navIndicator"),
   topbar: document.querySelector("#topbar"),
   brandHome: document.querySelector("#brandHome"),
   brandClass: document.querySelector("#brandClass"),
@@ -172,6 +177,7 @@ function initialize() {
   applySavedTheme();
   registerServiceWorker();
   bindGlobalEvents();
+  routeInitialView();
   runSplash();
 }
 
@@ -235,6 +241,7 @@ function bindGlobalEvents() {
 function runSplash() {
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   elements.splash.classList.add("is-ready");
+  window.setTimeout(finishSplash, 3400);
 
   if (reduceMotion) {
     window.setTimeout(finishSplash, 250);
@@ -249,13 +256,24 @@ function runSplash() {
 }
 
 function finishSplash() {
+  if (state.splashFinished || !elements.splash) {
+    return;
+  }
+  state.splashFinished = true;
   elements.splash.classList.add("is-leaving");
   elements.appShell.classList.add("is-ready");
   elements.appShell.setAttribute("aria-hidden", "false");
   window.setTimeout(() => {
-    elements.splash.remove();
-    routeInitialView();
+    elements.splash?.remove();
+    initializeLiquidNavigation();
   }, 430);
+}
+
+function initializeLiquidNavigation() {
+  if (!state.className || elements.bottomNav.hidden) {
+    return;
+  }
+  window.MyTimetableGlass?.initialize(elements.glassDock);
 }
 
 function routeInitialView() {
@@ -372,6 +390,7 @@ function renderClassSelection() {
       { duration: 420, easing: "ease-in-out" }
     );
     elements.bottomNav.hidden = false;
+    initializeLiquidNavigation();
     window.setTimeout(() => {
       state.activeDay = getTodaySchoolDay();
       switchTab("week");
@@ -392,9 +411,12 @@ function switchTab(tab) {
   clearCountdownTimer();
   window.scrollTo({ top: 0, behavior: "smooth" });
 
-  document.querySelectorAll(".nav-item").forEach((button) => {
+  const navItems = [...document.querySelectorAll(".nav-item")];
+  navItems.forEach((button) => {
     button.classList.toggle("is-active", button.dataset.tab === tab);
   });
+  const activeIndex = Math.max(0, navItems.findIndex((button) => button.dataset.tab === tab));
+  elements.navIndicator?.style.setProperty("--nav-index", String(activeIndex));
 
   const renderers = {
     week: renderWeekPage,
@@ -432,12 +454,25 @@ function renderWeekPage() {
     <section class="page">
       <header class="page__header">
         <div>
-          <p class="page__eyebrow">本週課表</p>
+          <p class="page__eyebrow">週覽</p>
           <h1 class="page__title">今天，從容上課</h1>
           <p class="page__subtitle">${escapeHtml(state.className)} 班 · 點按日期或左右滑動查看</p>
         </div>
         <span class="page__date">${dateLabel}</span>
       </header>
+
+      <label class="search-box week-search">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="11" cy="11" r="7"></circle>
+          <path d="m20 20-4-4"></path>
+        </svg>
+        <input id="weekSearch" type="search" value="${escapeAttribute(state.weekQuery)}" placeholder="搜尋科目、老師或教室" autocomplete="off">
+        <button class="search-clear ${state.weekQuery ? "is-visible" : ""}" id="clearWeekSearch" type="button" aria-label="清除搜尋">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m6 6 12 12M18 6 6 18"></path>
+          </svg>
+        </button>
+      </label>
 
       <div class="day-switcher" id="daySwitcher">
         ${SCHOOL_DAYS.map((day, index) => `
@@ -465,19 +500,25 @@ function renderWeekPanelContent(day, lessons) {
   const now = new Date();
   const date = getDateForSchoolDay(day.key, now);
   const dateText = date ? formatDate(date, "medium") : "本週";
+  const query = state.weekQuery.toLocaleLowerCase("zh-Hant");
+  const visibleLessons = query
+    ? lessons.filter((lesson) => (
+      `${lesson.subject} ${lesson.teacher} ${lesson.room}`.toLocaleLowerCase("zh-Hant").includes(query)
+    ))
+    : lessons;
 
   return `
     <header class="week-panel__header">
       <div>
         <h2>${day.name}</h2>
-        <p>${dateText} · 共 ${lessons.length} 節課</p>
+        <p>${dateText} · ${query ? `找到 ${visibleLessons.length} 節課` : `共 ${lessons.length} 節課`}</p>
       </div>
-      <span class="schedule-card__count">${lessons.length} 節</span>
+      <span class="schedule-card__count">${visibleLessons.length} 節</span>
     </header>
     <div class="lesson-list">
-      ${lessons.length
-        ? lessons.map((lesson) => renderLessonCard(lesson, { showCurrent: true, date })).join("")
-        : `<div class="lesson-card is-empty">今日無課，好好休息</div>`}
+      ${visibleLessons.length
+        ? visibleLessons.map((lesson) => renderLessonCard(lesson, { showCurrent: true, date })).join("")
+        : `<div class="lesson-card is-empty">${query ? "找不到符合的課堂" : "今日無課，好好休息"}</div>`}
     </div>
   `;
 }
@@ -485,6 +526,8 @@ function renderWeekPanelContent(day, lessons) {
 function bindWeekEvents() {
   const switcher = document.querySelector("#daySwitcher");
   const panel = document.querySelector("#weekPanel");
+  const searchInput = document.querySelector("#weekSearch");
+  const clearButton = document.querySelector("#clearWeekSearch");
 
   switcher?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-day]");
@@ -520,6 +563,22 @@ function bindWeekEvents() {
       window.setTimeout(() => updateActiveDay(SCHOOL_DAYS[nextIndex].key), 140);
     }
   }, { passive: true });
+
+  searchInput?.addEventListener("input", () => {
+    state.weekQuery = searchInput.value.trim();
+    clearButton?.classList.toggle("is-visible", Boolean(state.weekQuery));
+    const day = SCHOOL_DAYS.find((item) => item.key === state.activeDay) || SCHOOL_DAYS[0];
+    panel.innerHTML = renderWeekPanelContent(day, getLessons(state.className, day.key));
+  });
+
+  clearButton?.addEventListener("click", () => {
+    state.weekQuery = "";
+    searchInput.value = "";
+    clearButton.classList.remove("is-visible");
+    const day = SCHOOL_DAYS.find((item) => item.key === state.activeDay) || SCHOOL_DAYS[0];
+    panel.innerHTML = renderWeekPanelContent(day, getLessons(state.className, day.key));
+    searchInput.focus();
+  });
 }
 
 function updateActiveDay(dayKey) {
@@ -548,14 +607,16 @@ function renderSchedulePage() {
   const todayData = getDayScheduleData(today);
   const tomorrowData = getDayScheduleData(tomorrow);
   const searchResults = getSearchResults(state.searchQuery);
+  const selectedData = state.scheduleDay === "tomorrow" ? tomorrowData : todayData;
+  const selectedLabel = state.scheduleDay === "tomorrow" ? "明天" : "今天";
 
   return `
     <section class="page">
       <header class="page__header">
         <div>
           <p class="page__eyebrow">課表</p>
-          <h1 class="page__title">今天與明天</h1>
-          <p class="page__subtitle">快速查看接下來兩天的課堂，也可搜尋老師或科目。</p>
+          <h1 class="page__title">是日課表</h1>
+          <p class="page__subtitle">切換今天與明天，快速掌握下一節課。</p>
         </div>
       </header>
 
@@ -572,13 +633,17 @@ function renderSchedulePage() {
         </button>
       </label>
 
+      <div class="schedule-tabs" role="tablist" aria-label="選擇日期">
+        <button class="schedule-tab ${state.scheduleDay === "today" ? "is-active" : ""}" type="button" role="tab" aria-selected="${state.scheduleDay === "today"}" data-schedule-day="today">今天</button>
+        <button class="schedule-tab ${state.scheduleDay === "tomorrow" ? "is-active" : ""}" type="button" role="tab" aria-selected="${state.scheduleDay === "tomorrow"}" data-schedule-day="tomorrow">明天</button>
+      </div>
+
       <div id="scheduleContent">
         ${state.searchQuery
           ? renderSearchResults(searchResults)
           : `
             <div class="schedule-stack section">
-              ${renderDayScheduleCard("今天", todayData)}
-              ${renderDayScheduleCard("明天", tomorrowData)}
+              ${renderDayScheduleCard(selectedLabel, selectedData)}
             </div>
           `}
       </div>
@@ -587,6 +652,7 @@ function renderSchedulePage() {
 }
 
 function renderDayScheduleCard(label, data) {
+  const holidayMessage = data.holiday?.name || "今日毋須上課";
   return `
     <article class="schedule-card card">
       <header class="schedule-card__header">
@@ -599,9 +665,10 @@ function renderDayScheduleCard(label, data) {
       ${data.isHoliday
         ? `
           <div class="empty-holiday">
-            <span class="empty-holiday__emoji">🎉</span>
+            <span class="empty-holiday__emoji">${data.holiday ? "🎉" : "☁️"}</span>
             <h3>${label}放假</h3>
-            <p>${escapeHtml(data.holiday?.name || "不用上課")}，盡情享受休息時間吧。</p>
+            <span class="holiday-badge">${escapeHtml(holidayMessage)}</span>
+            <p>放慢腳步，讓今天也有一點期待的空間。</p>
           </div>
         `
         : `
@@ -619,20 +686,46 @@ function bindScheduleEvents() {
   const searchInput = document.querySelector("#scheduleSearch");
   const content = document.querySelector("#scheduleContent");
   const clearButton = document.querySelector("#clearSearch");
+  const tabs = document.querySelector(".schedule-tabs");
 
   searchInput?.addEventListener("input", () => {
     state.searchQuery = searchInput.value.trim();
     clearButton.classList.toggle("is-visible", Boolean(state.searchQuery));
     const todayData = getDayScheduleData(new Date());
     const tomorrowData = getDayScheduleData(addDays(new Date(), 1));
+    const selectedData = state.scheduleDay === "tomorrow" ? tomorrowData : todayData;
+    const selectedLabel = state.scheduleDay === "tomorrow" ? "明天" : "今天";
     content.innerHTML = state.searchQuery
       ? renderSearchResults(getSearchResults(state.searchQuery))
       : `
         <div class="schedule-stack section">
-          ${renderDayScheduleCard("今天", todayData)}
-          ${renderDayScheduleCard("明天", tomorrowData)}
+          ${renderDayScheduleCard(selectedLabel, selectedData)}
         </div>
       `;
+  });
+
+  tabs?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-schedule-day]");
+    if (!button) {
+      return;
+    }
+
+    state.scheduleDay = button.dataset.scheduleDay;
+    tabs.querySelectorAll("[data-schedule-day]").forEach((item) => {
+      const isActive = item.dataset.scheduleDay === state.scheduleDay;
+      item.classList.toggle("is-active", isActive);
+      item.setAttribute("aria-selected", String(isActive));
+    });
+
+    const todayData = getDayScheduleData(new Date());
+    const tomorrowData = getDayScheduleData(addDays(new Date(), 1));
+    const selectedData = state.scheduleDay === "tomorrow" ? tomorrowData : todayData;
+    const selectedLabel = state.scheduleDay === "tomorrow" ? "明天" : "今天";
+    content.innerHTML = `
+      <div class="schedule-stack section">
+        ${renderDayScheduleCard(selectedLabel, selectedData)}
+      </div>
+    `;
   });
 
   clearButton?.addEventListener("click", () => {
@@ -741,34 +834,25 @@ function renderCountdownPage() {
 function renderCountdownHeroContent(countdown) {
   const ringLength = 2 * Math.PI * 48;
   const ringOffset = ringLength * (1 - countdown.progress);
-  const showProgressRing = countdown.mode === "lesson";
-
   return `
-    <div class="countdown-hero__layout">
-      <div class="countdown-copy">
-        <p class="countdown-label">${countdown.label}</p>
-        <strong class="countdown-time" id="countdownTime">${countdown.display}</strong>
-        <p class="countdown-subject">${escapeHtml(countdown.subject)}</p>
-        <p class="countdown-detail">${escapeHtml(countdown.detail)}</p>
+    <div class="countdown-clock">
+      <div class="progress-ring progress-ring--clock" aria-label="課堂進度 ${Math.round(countdown.progress * 100)}%">
+        <svg viewBox="0 0 112 112" aria-hidden="true">
+          <circle class="progress-ring__track" cx="56" cy="56" r="48"></circle>
+          <circle class="progress-ring__value" id="progressRingValue" cx="56" cy="56" r="48" stroke-dasharray="${ringLength}" stroke-dashoffset="${ringOffset}"></circle>
+        </svg>
+        <div class="countdown-clock__content">
+          <p class="countdown-label">即時時間</p>
+          <strong class="countdown-time" id="countdownTime">${countdown.display}</strong>
+          <span class="countdown-label-detail">${countdown.mode === "lesson" ? "距離下課" : countdown.mode === "break" ? "休息時間" : "下一堂課"}</span>
+        </div>
       </div>
-      ${showProgressRing
-        ? `
-          <div class="progress-ring" aria-label="課堂進度 ${Math.round(countdown.progress * 100)}%">
-            <svg viewBox="0 0 112 112" aria-hidden="true">
-              <circle class="progress-ring__track" cx="56" cy="56" r="48"></circle>
-              <circle class="progress-ring__value" id="progressRingValue" cx="56" cy="56" r="48" stroke-dasharray="${ringLength}" stroke-dashoffset="${ringOffset}"></circle>
-            </svg>
-            <span class="progress-ring__label" id="progressRingLabel">${Math.round(countdown.progress * 100)}%</span>
-          </div>
-        `
-        : `
-          <div class="progress-ring" aria-hidden="true">
-            <svg viewBox="0 0 112 112">
-              <circle class="progress-ring__track" cx="56" cy="56" r="48"></circle>
-            </svg>
-            <span class="progress-ring__label">${countdown.mode === "before" ? "準備" : countdown.mode === "break" ? "休息" : "完成"}</span>
-          </div>
-        `}
+      <span class="progress-ring__label" id="progressRingLabel">${Math.round(countdown.progress * 100)}%</span>
+    </div>
+    <div class="countdown-copy">
+      <p class="countdown-subject" id="countdownSubject">${escapeHtml(countdown.subject)}</p>
+      <p class="countdown-detail" id="countdownDetail">${escapeHtml(countdown.detail)}</p>
+      <p class="countdown-status" id="countdownStatus">${escapeHtml(countdown.label)}</p>
     </div>
     <div class="countdown-progress">
       <div class="countdown-progress__meta">
@@ -799,6 +883,9 @@ function updateCountdownDom() {
   const progressBar = document.querySelector("#countdownProgressValue");
   const ring = document.querySelector("#progressRingValue");
   const ringLabel = document.querySelector("#progressRingLabel");
+  const subject = document.querySelector("#countdownSubject");
+  const detail = document.querySelector("#countdownDetail");
+  const status = document.querySelector("#countdownStatus");
   const hero = document.querySelector("#countdownHero");
 
   if (!timeElement || !hero) {
@@ -825,6 +912,15 @@ function updateCountdownDom() {
   }
   if (ringLabel) {
     ringLabel.textContent = `${Math.round(countdown.progress * 100)}%`;
+  }
+  if (subject) {
+    subject.textContent = countdown.subject;
+  }
+  if (detail) {
+    detail.textContent = countdown.detail;
+  }
+  if (status) {
+    status.textContent = countdown.label;
   }
 
   const remainingList = document.querySelector("#remainingList");
@@ -1052,32 +1148,81 @@ function renderExperiencePage() {
   const completedCount = state.todos.filter((todo) => todo.done).length;
   const progress = state.todos.length ? completedCount / state.todos.length : 0;
   const sorted = [...state.todos].sort((a, b) => Number(a.done) - Number(b.done));
+  const now = new Date();
+  const todayHoliday = getHolidayForDate(now);
+  const todaySchoolDay = getTodaySchoolDay(now);
+  const todayLessons = !todayHoliday && todaySchoolDay
+    ? getLessons(state.className, todaySchoolDay)
+    : [];
+  const monthTitle = new Intl.DateTimeFormat("zh-Hant", {
+    year: "numeric",
+    month: "long"
+  }).format(now);
 
   return `
     <section class="page">
       <header class="page__header">
         <div>
-          <p class="page__eyebrow">閱歷</p>
-          <h1 class="page__title">今天要做的事</h1>
-          <p class="page__subtitle">功課、測驗與提醒都放在一起，完成後勾選即可。</p>
+          <p class="page__eyebrow">月曆</p>
+          <h1 class="page__title">${monthTitle}</h1>
+          <p class="page__subtitle">查看本月上課日與假期，今日待辦也集中顯示在下方。</p>
         </div>
       </header>
 
-      <article class="progress-summary card">
-        <div class="progress-summary__top">
-          <h2>今日完成</h2>
-          <span class="progress-summary__count">${completedCount} / ${state.todos.length}</span>
-        </div>
-        <div class="progress-track">
-          <div class="progress-track__value" style="width:${progress * 100}%"></div>
-        </div>
-      </article>
+      ${renderMonthCalendar(now)}
 
       <section class="section">
         <div class="section-heading">
-          <h2>事項清單</h2>
+          <h2>${formatDate(now, "long")}的事件</h2>
+          <p>${todayHoliday || todayLessons.length ? "今日行程" : "沒有安排"}</p>
+        </div>
+        <div class="day-events card">
+          ${todayHoliday
+            ? `
+              <article class="day-event day-event--holiday">
+                <span class="day-event__icon">${todayHoliday.emoji}</span>
+                <div>
+                  <h3>${escapeHtml(todayHoliday.name)}</h3>
+                  <p>公眾假期 · ${todayHoliday.start === todayHoliday.end ? formatDate(todayHoliday.start, "medium") : `${formatDate(todayHoliday.start, "medium")} 至 ${formatDate(todayHoliday.end, "medium")}`}</p>
+                </div>
+                <span class="day-event__badge">放假</span>
+              </article>
+            `
+            : todayLessons.length
+              ? todayLessons.map((lesson) => `
+                <article class="day-event" style="--subject-color:${getSubjectColor(lesson.subject)}">
+                  <span class="day-event__icon day-event__icon--lesson">${lesson.period}</span>
+                  <div>
+                    <h3>${escapeHtml(lesson.subject)}</h3>
+                    <p>${lesson.start} – ${lesson.end} · ${escapeHtml(lesson.teacher)} · ${escapeHtml(lesson.room)}</p>
+                  </div>
+                  <span class="day-event__badge">第 ${lesson.period} 節</span>
+                </article>
+              `).join("")
+              : `
+                <div class="empty-state">
+                  <span class="empty-state__icon">☕️</span>
+                  <h3>今天沒有課堂或假期安排</h3>
+                  <p>可以專心完成待辦事項。</p>
+                </div>
+              `}
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          <h2>今日待辦</h2>
           <p>${sorted.some((todo) => !todo.done) ? "按一下即可完成" : "全部完成"}</p>
         </div>
+        <article class="progress-summary card">
+          <div class="progress-summary__top">
+            <h2>今日完成</h2>
+            <span class="progress-summary__count">${completedCount} / ${state.todos.length}</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-track__value" style="width:${progress * 100}%"></div>
+          </div>
+        </article>
         <div class="task-list" id="taskList">
           ${sorted.length ? sorted.map(renderTaskRow).join("") : `
             <div class="empty-state card">
@@ -1098,6 +1243,57 @@ function renderExperiencePage() {
         </form>
       </section>
     </section>
+  `;
+}
+
+function renderMonthCalendar(referenceDate) {
+  const year = referenceDate.getFullYear();
+  const month = referenceDate.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const mondayOffset = (firstDay.getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const todayKey = getDateKey(new Date());
+  const weekdays = ["一", "二", "三", "四", "五", "六", "日"];
+  const cells = [];
+
+  for (let index = 0; index < 42; index += 1) {
+    const dayNumber = index - mondayOffset + 1;
+    if (dayNumber < 1 || dayNumber > daysInMonth) {
+      cells.push(`<span class="calendar-day is-outside" aria-hidden="true"></span>`);
+      continue;
+    }
+
+    const date = new Date(year, month, dayNumber, 12, 0, 0, 0);
+    const dateKey = getDateKey(date);
+    const holiday = getHolidayForDate(date);
+    const schoolDay = getTodaySchoolDay(date);
+    const lessonCount = holiday || !schoolDay ? 0 : getLessons(state.className, schoolDay).length;
+    const isToday = dateKey === todayKey;
+    const classes = [
+      "calendar-day",
+      isToday ? "is-today" : "",
+      holiday ? "is-holiday" : "",
+      !schoolDay ? "is-weekend" : ""
+    ].filter(Boolean).join(" ");
+
+    cells.push(`
+      <span class="${classes}" title="${holiday ? escapeAttribute(holiday.name) : lessonCount ? `${lessonCount} 節課` : "不用上課"}">
+        <span class="calendar-day__number">${dayNumber}</span>
+        ${holiday ? `<span class="calendar-day__event"></span>` : ""}
+        ${lessonCount ? `<span class="calendar-day__lessons" aria-label="${lessonCount} 節課">${Array.from({ length: Math.min(lessonCount, 3) }, () => `<i></i>`).join("")}</span>` : ""}
+      </span>
+    `);
+  }
+
+  return `
+    <article class="month-calendar card">
+      <div class="calendar-grid calendar-grid--weekdays">
+        ${weekdays.map((day) => `<span>${day}</span>`).join("")}
+      </div>
+      <div class="calendar-grid calendar-grid--days">
+        ${cells.join("")}
+      </div>
+    </article>
   `;
 }
 
@@ -1503,6 +1699,7 @@ function toggleTheme() {
   document.documentElement.dataset.theme = nextTheme;
   localStorage.setItem(STORAGE_KEYS.theme, nextTheme);
   updateThemeMeta(nextTheme);
+  window.MyTimetableGlass?.updateTheme(nextTheme);
   showToast(nextTheme === "dark" ? "已切換至深色模式" : "已切換至淺色模式");
 }
 

@@ -1,11 +1,13 @@
-const CACHE_NAME = "my-timetable-v3";
+const CACHE_NAME = "my-timetable-v11";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
+  "./liquid-glass.js",
   "./app.js",
   "./manifest.json",
   "./icon.svg",
+  "./apple-touch-icon-180.png",
   "./icon-192.png",
   "./icon-512.png",
   "./icon-maskable-512.png"
